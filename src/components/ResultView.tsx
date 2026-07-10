@@ -11,6 +11,23 @@ interface AxisMeta {
   right: { letter: string; name: string };
 }
 
+// 카카오 SDK 최소 타입 정의
+interface KakaoSDK {
+  isInitialized: () => boolean;
+  init: (key: string) => void;
+  Share: { sendDefault: (settings: Record<string, unknown>) => void };
+}
+declare global {
+  interface Window {
+    Kakao?: KakaoSDK;
+  }
+}
+
+const KAKAO_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
+const KAKAO_SDK_SRC = "https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js";
+const KAKAO_SDK_INTEGRITY =
+  "sha384-DKYJZ8NLiK8MN4/C5P2dtSmLQ4KwPaoqAfyA/DfmEc1VDxu4yyC7wy6K1Hs90nka";
+
 const AXES: AxisMeta[] = [
   { key: "e", left: { letter: "E", name: "외향" }, right: { letter: "I", name: "내향" } },
   { key: "s", left: { letter: "S", name: "감각" }, right: { letter: "N", name: "직관" } },
@@ -24,6 +41,7 @@ export default function ResultView({ type }: { type: MbtiType }) {
   const [toast, setToast] = useState<string | null>(null);
   const [pct, setPct] = useState<Record<string, number> | null>(null);
   const [name, setName] = useState("");
+  const [kakaoReady, setKakaoReady] = useState(false);
 
   // 쿼리스트링에서 이름 + 축별 백분율 읽기 (e/s/t/j = 왼쪽 극 %)
   useEffect(() => {
@@ -38,6 +56,30 @@ export default function ResultView({ type }: { type: MbtiType }) {
       });
       setPct(obj);
     }
+  }, []);
+
+  // 카카오 SDK 로드 + 초기화 (키가 설정된 경우에만)
+  useEffect(() => {
+    if (!KAKAO_KEY) return;
+
+    function init() {
+      const k = window.Kakao;
+      if (!k) return;
+      if (!k.isInitialized()) k.init(KAKAO_KEY as string);
+      setKakaoReady(true);
+    }
+
+    if (window.Kakao) {
+      init();
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = KAKAO_SDK_SRC;
+    script.integrity = KAKAO_SDK_INTEGRITY;
+    script.crossOrigin = "anonymous";
+    script.async = true;
+    script.onload = init;
+    document.head.appendChild(script);
   }, []);
 
   function flash(msg: string) {
@@ -94,6 +136,37 @@ export default function ResultView({ type }: { type: MbtiType }) {
     } catch {
       flash("공유를 지원하지 않는 환경이에요.");
     }
+  }
+
+  // 카카오톡으로 공유 (인앱 브라우저에서도 동작)
+  function shareKakao() {
+    const k = window.Kakao;
+    if (!k || !k.isInitialized()) {
+      flash("카카오 공유를 불러오는 중이에요. 잠시 후 다시 눌러주세요.");
+      return;
+    }
+    const url = window.location.href;
+    const origin = window.location.origin;
+    const who = name ? `${name}님의` : "나의";
+    k.Share.sendDefault({
+      objectType: "feed",
+      content: {
+        title: `${who} MBTI는 ${type.code} · ${type.nickname}`,
+        description: type.summary,
+        imageUrl: `${origin}/og.png`,
+        link: { mobileWebUrl: url, webUrl: url },
+      },
+      buttons: [
+        {
+          title: "내 결과 보기",
+          link: { mobileWebUrl: url, webUrl: url },
+        },
+        {
+          title: "나도 테스트하기",
+          link: { mobileWebUrl: origin, webUrl: origin },
+        },
+      ],
+    });
   }
 
   return (
@@ -230,11 +303,22 @@ export default function ResultView({ type }: { type: MbtiType }) {
         </section>
 
         {/* ── 액션 버튼 ── */}
+        {kakaoReady && (
+          <button
+            onClick={shareKakao}
+            className="mt-8 flex w-full items-center justify-center gap-1 rounded-2xl bg-[#FEE500] px-4 py-4 text-lg font-bold text-[#3C1E1E] shadow-lg shadow-yellow-400/40 transition active:scale-[0.98] hover:brightness-95"
+          >
+            💬 카카오톡으로 공유하기
+          </button>
+        )}
+
         <button
           onClick={share}
-          className="mt-8 flex w-full items-center justify-center rounded-2xl bg-blue-600 px-4 py-4 text-lg font-bold text-white shadow-lg shadow-blue-600/40 transition active:scale-[0.98] hover:bg-blue-700"
+          className={`${
+            kakaoReady ? "mt-3" : "mt-8"
+          } flex w-full items-center justify-center rounded-2xl bg-blue-600 px-4 py-4 text-lg font-bold text-white shadow-lg shadow-blue-600/40 transition active:scale-[0.98] hover:bg-blue-700`}
         >
-          🔗 결과 공유하기
+          🔗 다른 앱으로 공유 / 링크 복사
         </button>
 
         <div className="mt-3 grid grid-cols-2 gap-3">
