@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { questions } from "@/lib/questions";
 import { calculateResult, type Answers } from "@/lib/scoring";
@@ -10,6 +10,13 @@ export default function TestPage() {
   const router = useRouter();
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
+  const [name, setName] = useState("");
+
+  // 시작 화면에서 넘어온 이름 읽기
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    setName(p.get("name") || "");
+  }, []);
 
   const total = questions.length;
   const q = questions[index];
@@ -29,6 +36,7 @@ export default function TestPage() {
         t: String(breakdown[2].leftPct),
         j: String(breakdown[3].leftPct),
       });
+      if (name) q.set("name", name);
       router.push(`/result/${code}?${q.toString()}`);
     } else {
       // 짧은 딜레이로 선택 피드백을 보여준 뒤 전환

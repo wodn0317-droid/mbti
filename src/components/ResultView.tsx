@@ -23,10 +23,12 @@ export default function ResultView({ type }: { type: MbtiType }) {
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [pct, setPct] = useState<Record<string, number> | null>(null);
+  const [name, setName] = useState("");
 
-  // 쿼리스트링에서 축별 백분율 읽기 (e/s/t/j = 왼쪽 극 %)
+  // 쿼리스트링에서 이름 + 축별 백분율 읽기 (e/s/t/j = 왼쪽 극 %)
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
+    setName(p.get("name") || "");
     const keys = ["e", "s", "t", "j"] as const;
     if (keys.every((k) => p.has(k))) {
       const obj: Record<string, number> = {};
@@ -66,9 +68,10 @@ export default function ResultView({ type }: { type: MbtiType }) {
 
   async function share() {
     const url = typeof window !== "undefined" ? window.location.href : "";
+    const who = name ? `${name}님의` : "나의";
     const shareData = {
-      title: `내 MBTI는 ${type.code} · ${type.nickname}`,
-      text: `나의 MBTI 유형은 ${type.code}(${type.nickname})! 너도 테스트 해봐 👇`,
+      title: `${who} MBTI는 ${type.code} · ${type.nickname}`,
+      text: `${who} MBTI 유형은 ${type.code}(${type.nickname})! 너도 테스트 해봐 👇`,
       url,
     };
     try {
@@ -92,6 +95,11 @@ export default function ResultView({ type }: { type: MbtiType }) {
           className="overflow-hidden rounded-3xl bg-gradient-to-br from-blue-500 to-blue-700 p-8 text-white shadow-lg shadow-blue-600/20"
         >
           <div className="text-center">
+            {name && (
+              <p className="mb-1 text-base font-bold opacity-95">
+                {name}님의 성격 유형은
+              </p>
+            )}
             <div className="mb-3 select-none text-6xl">{type.emoji}</div>
             <p className="text-sm font-semibold tracking-widest opacity-90">
               {type.nickname}
@@ -212,28 +220,28 @@ export default function ResultView({ type }: { type: MbtiType }) {
         </section>
 
         {/* ── 액션 버튼 ── */}
-        <div className="mt-8 grid grid-cols-2 gap-3">
+        <button
+          onClick={share}
+          className="mt-8 flex w-full items-center justify-center rounded-2xl bg-blue-600 px-4 py-4 text-lg font-bold text-white shadow-lg shadow-blue-600/40 transition active:scale-[0.98] hover:bg-blue-700"
+        >
+          🔗 결과 공유하기
+        </button>
+
+        <div className="mt-3 grid grid-cols-2 gap-3">
           <button
             onClick={saveImage}
             disabled={busy}
-            className="rounded-2xl bg-blue-600 px-4 py-3.5 font-bold text-white shadow-md shadow-blue-600/30 transition active:scale-[0.98] hover:bg-blue-700 disabled:opacity-60"
+            className="rounded-2xl border-2 border-blue-600 px-4 py-3.5 font-bold text-blue-600 transition active:scale-[0.98] hover:bg-blue-50 disabled:opacity-60"
           >
             {busy ? "저장 중..." : "📥 이미지 저장"}
           </button>
-          <button
-            onClick={share}
-            className="rounded-2xl border-2 border-blue-600 px-4 py-3.5 font-bold text-blue-600 transition active:scale-[0.98] hover:bg-blue-50"
+          <Link
+            href="/"
+            className="rounded-2xl bg-blue-50 px-4 py-3.5 text-center font-bold text-blue-700 transition active:scale-[0.98] hover:bg-blue-100"
           >
-            🔗 공유하기
-          </button>
+            🔄 다시하기
+          </Link>
         </div>
-
-        <Link
-          href="/test"
-          className="mt-3 block w-full rounded-2xl bg-blue-50 px-4 py-3.5 text-center font-bold text-blue-700 transition active:scale-[0.98] hover:bg-blue-100"
-        >
-          🔄 다시 테스트하기
-        </Link>
       </div>
 
       {toast && (
