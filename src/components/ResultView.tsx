@@ -74,15 +74,25 @@ export default function ResultView({ type }: { type: MbtiType }) {
       text: `${who} MBTI 유형은 ${type.code}(${type.nickname})! 너도 테스트 해봐 👇`,
       url,
     };
-    try {
-      if (navigator.share) {
+
+    // 1) 네이티브 공유 시트 (카카오톡 등으로 바로 보내기 창)
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
         await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(url);
-        flash("링크를 복사했어요 🔗");
+        return; // 공유 시트가 정상적으로 떴으면 종료
+      } catch (err) {
+        // 사용자가 시트를 닫은(취소) 경우엔 아무것도 하지 않음
+        if (err instanceof Error && err.name === "AbortError") return;
+        // 그 외 오류는 아래 복사 폴백으로 진행
       }
+    }
+
+    // 2) 폴백: 공유 시트를 지원하지 않는 브라우저 → 링크 복사
+    try {
+      await navigator.clipboard.writeText(url);
+      flash("이 브라우저는 공유창을 지원하지 않아 링크를 복사했어요 🔗");
     } catch {
-      /* 사용자가 공유를 취소한 경우 무시 */
+      flash("공유를 지원하지 않는 환경이에요.");
     }
   }
 
